@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- 外圆 -->
+  <circle cx="60" cy="60" r="55" fill="#1a5fb4" stroke="#0d3d7a" stroke-width="3"/>
+  
+  <!-- 内圆 -->
+  <circle cx="60" cy="60" r="45" fill="#3584e4"/>
+  
+  <!-- 市政道路图案 -->
+  <path d="M30 60 L90 60" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>
+  <path d="M35 60 L35 75" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M55 60 L55 72" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M75 60 L75 78" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M85 60 L85 70" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  
+  <!-- 桥梁图案 -->
+  <path d="M25 55 Q60 35 95 55" stroke="#ffffff" stroke-width="3" fill="none"/>
+  
+  <!-- 齿轮图案 -->
+  <circle cx="60" cy="60" r="12" fill="#ffffff"/>
+  <circle cx="60" cy="60" r="6" fill="#3584e4"/>
+  
+  <!-- 文字 -->
+  <text x="60" y="105" font-family="Microsoft YaHei, SimHei, sans-serif" font-size="10" fill="#ffffff" text-anchor="middle" font-weight="bold">市政工程局</text>
+</svg>
