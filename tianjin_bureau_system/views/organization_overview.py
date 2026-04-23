@@ -826,9 +826,20 @@ class OrganizationOverview:
                 bg=self.COLORS['bg_secondary'],
                 fg=self.COLORS['primary']).pack(pady=(10, 5))
 
-        # 下属单位容器 - 使用网格布局，2列
-        unit_container = tk.Frame(bottom_right_frame, bg=self.COLORS['bg_secondary'])
-        unit_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+        # 下属单位容器 - 使用Canvas + Scrollbar实现滚动
+        canvas_frame = tk.Frame(bottom_right_frame, bg=self.COLORS['bg_secondary'])
+        canvas_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+
+        canvas = tk.Canvas(canvas_frame, bg=self.COLORS['bg_secondary'], highlightthickness=0)
+        scrollbar = tk.Scrollbar(canvas_frame, orient=tk.VERTICAL, command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # 创建下属单位容器
+        unit_container = tk.Frame(canvas, bg=self.COLORS['bg_secondary'])
+        canvas.create_window((0, 0), window=unit_container, anchor=tk.NW)
 
         # 遍历所有下属单位，创建可点击按钮，2列布局
         sorted_unit_ids = sorted(self.UNIT_DETAILS.keys())
@@ -879,6 +890,10 @@ class OrganizationOverview:
                     fg=self.COLORS['text_secondary'],
                     anchor=tk.W
                 ).pack(fill=tk.X, padx=10)
+
+        # 更新Canvas滚动区域
+        unit_container.update_idletasks()
+        canvas.configure(scrollregion=canvas.bbox("all"))
 
     def _show_unit_detail(self, unit_id):
         """显示单位详情弹窗"""

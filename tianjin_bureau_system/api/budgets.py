@@ -2,10 +2,11 @@
 """
 预算管理接口
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 from db.connection import db
+from api.pagination import PaginationParams, PaginatedResponse, paginate_query, count_query
 
 router = APIRouter(prefix="/api/budgets", tags=["预算管理"])
 
@@ -26,13 +27,18 @@ class ApproveBudgetRequest(BaseModel):
 
 @router.get("")
 def get_budgets(
+    request: Request,
     year: Optional[int] = None,
     status: Optional[str] = None,
-    org_id: Optional[int] = None
+    org_id: Optional[int] = None,
+    page: int = 1,
+    page_size: int = 20
 ):
     """
-    获取预算申请列表
+    获取预算申请列表（支持分页）
     """
+    pagination = PaginationParams(page=page, page_size=page_size)
+
     sql = """SELECT b.*, o.name as org_name, u.full_name as applicant_name
              FROM budget_applications b
              LEFT JOIN organizations o ON b.organization_id = o.id
@@ -50,15 +56,18 @@ def get_budgets(
         sql += " AND b.organization_id = %s"
         params.append(org_id)
 
+    # 获取总数
+    count_sql = count_query(sql)
+    total_result = db.execute_query(count_sql, tuple(params) if params else None)
+    total = total_result[0].get('total', 0) if total_result else 0
+
+    # 添加分页
     sql += " ORDER BY b.apply_date DESC"
+    paginated_sql, paginated_params = paginate_query(sql, tuple(params) if params else (), pagination)
 
-    budgets = db.execute_query(sql, tuple(params) if params else None)
+    budgets = db.execute_query(paginated_sql, paginated_params)
 
-    return {
-        "code": 200,
-        "data": budgets,
-        "total": len(budgets)
-    }
+    return PaginatedResponse.create(budgets, total, pagination).dict()
 
 
 @router.get("/statistics")
@@ -169,4 +178,51 @@ def reject_budget(budget_id: int, req: ApproveBudgetRequest):
     return {
         "code": 200,
         "message": "预算申请已拒绝"
+    }
+
+
+@router.get("/my-applications")
+def get_my_budget_applications(applicant_id: int, status: Optional[str] = None):
+    """
+    获取我的预算申报
+    """
+    sql = """SELECT b.*, o.name as org_name, u.full_name as applicant_name
+             FROM budget_applications b
+             LEFT JOIN organizations o ON b.organization_id = o.id
+             LEFT JOIN users u ON b.applicant_id = u.id
+             WHERE b.applicant_id = %s"""
+    params = [applicant_id]
+
+    if status:
+        sql += " AND b.status = %s"
+        params.append(status)
+
+    sql += " ORDER BY b.apply_date DESC"
+
+    budgets = db.execute_query(sql, tuple(params))
+
+    return {
+        "code": 200,
+        "data": budgets,
+        "total": len(budgets)
+    }
+
+
+@router.get("/org/{org_id}")
+def get_budgets_by_org(org_id: int):
+    """
+    按组织查看预算
+    """
+    sql = """SELECT b.*, o.name as org_name, u.full_name as applicant_name
+             FROM budget_applications b
+             LEFT JOIN organizations o ON b.organization_id = o.id
+             LEFT JOIN users u ON b.applicant_id = u.id
+             WHERE b.organization_id = %s
+             ORDER BY b.apply_date DESC"""
+    budgets = db.execute_query(sql, (org_id,))
+
+    return {
+        "code": 200,
+        "data": budgets,
+        "total": len(budgets)
     }

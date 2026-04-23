@@ -2,10 +2,11 @@
 """
 消息管理接口
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 from db.connection import db
+from api.pagination import PaginationParams, PaginatedResponse, paginate_query, count_query
 
 router = APIRouter(prefix="/api/messages", tags=["消息管理"])
 
@@ -24,13 +25,18 @@ class ReadMessageRequest(BaseModel):
 
 @router.get("")
 def get_messages(
+    request: Request,
     receiver_id: Optional[int] = None,
     sender_id: Optional[int] = None,
-    is_read: Optional[bool] = None
+    is_read: Optional[bool] = None,
+    page: int = 1,
+    page_size: int = 20
 ):
     """
-    获取消息列表
+    获取消息列表（支持分页）
     """
+    pagination = PaginationParams(page=page, page_size=page_size)
+
     sql = """SELECT m.*, s.full_name as sender_name, r.full_name as receiver_name
              FROM messages m
              LEFT JOIN users s ON m.sender_id = s.id
@@ -48,15 +54,18 @@ def get_messages(
         sql += " AND m.is_read = %s"
         params.append(1 if is_read else 0)
 
+    # 获取总数
+    count_sql = count_query(sql)
+    total_result = db.execute_query(count_sql, tuple(params) if params else None)
+    total = total_result[0].get('total', 0) if total_result else 0
+
+    # 添加分页
     sql += " ORDER BY m.create_date DESC"
+    paginated_sql, paginated_params = paginate_query(sql, tuple(params) if params else (), pagination)
 
-    messages = db.execute_query(sql, tuple(params) if params else None)
+    messages = db.execute_query(paginated_sql, paginated_params)
 
-    return {
-        "code": 200,
-        "data": messages,
-        "total": len(messages)
-    }
+    return PaginatedResponse.create(messages, total, pagination).dict()
 
 
 @router.get("/{msg_id}")
@@ -138,7 +147,7 @@ def mark_as_read(msg_id: int, req: ReadMessageRequest):
     }
 
 
-@router.get("/unread/count")
+@router.get("/unread-count")
 def get_unread_count(receiver_id: int):
     """
     获取未读消息数量
@@ -151,4 +160,99 @@ def get_unread_count(receiver_id: int):
     return {
         "code": 200,
         "data": {"unread_count": count}
+    }
+
+
+@router.post("/broadcast")
+def broadcast_message(
+    title: str,
+    content: str,
+    sender_id: int,
+    org_id: int,  # 发送方组织ID
+    target_type: str = "all"  # all, department, unit, sub_unit
+):
+    """
+    广播消息（局名义发送，仅办公室）
+    """
+    from models.user import User
+
+    # 验证发送方是否为办公室
+    sender = User.get_by_id(sender_id)
+    if not sender or sender['role'] != 'office_staff':
+        raise HTTPException(status_code=403, detail="只有办公室可以发送局名义消息")
+
+    # 获取目标用户
+    sql = """SELECT u.id as user_id
+             FROM users u
+             LEFT JOIN organizations o ON u.organization_id = o.id
+             WHERE 1=1"""
+    params = []
+
+    if target_type == 'department':
+        sql += " AND o.type = 'department'"
+    elif target_type == 'unit':
+        sql += " AND o.type = 'unit'"
+    elif target_type == 'sub_unit':
+        sql += " AND o.type = 'sub_unit'"
+
+    users = db.execute_query(sql, tuple(params) if params else None)
+
+    if not users:
+        return {
+            "code": 200,
+            "message": "没有目标用户",
+            "data": {"sent_count": 0}
+        }
+
+    # 批量发送消息
+    sent_count = 0
+    for user_data in users:
+        sql = """INSERT INTO messages
+                 (title, content, message_type, sender_id, receiver_id, is_read, create_date)
+                 VALUES (%s, %s, 'official', %s, %s, 0, NOW())"""
+        db.execute_update(sql, (title, content, sender_id, user_data['user_id']))
+        sent_count += 1
+
+    return {
+        "code": 200,
+        "message": "广播消息发送成功",
+        "data": {"sent_count": sent_count}
+    }
+
+
+@router.post("/business-notice")
+def send_business_notice(
+    title: str,
+    content: str,
+    sender_id: int,
+    sender_org_id: int,
+    target_org_id: int
+):
+    """
+    发送业务通知（各处室间）
+    """
+    # 获取目标组织的所有用户
+    sql = "SELECT id FROM users WHERE organization_id = %s"
+    users = db.execute_query(sql, (target_org_id,))
+
+    if not users:
+        return {
+            "code": 200,
+            "message": "目标组织没有用户",
+            "data": {"sent_count": 0}
+        }
+
+    # 批量发送消息
+    sent_count = 0
+    for user_data in users:
+        sql = """INSERT INTO messages
+                 (title, content, message_type, sender_id, receiver_id, is_read, create_date)
+                 VALUES (%s, %s, 'business', %s, %s, 0, NOW())"""
+        db.execute_update(sql, (title, content, sender_id, user_data['id']))
+        sent_count += 1
+
+    return {
+        "code": 200,
+        "message": "业务通知发送成功",
+        "data": {"sent_count": sent_count}
     }
