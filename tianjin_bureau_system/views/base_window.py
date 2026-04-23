@@ -7,6 +7,7 @@ from tkinter import ttk, messagebox
 from config import SYSTEM_NAME, DEPARTMENTS
 from PIL import Image, ImageTk
 import os
+import datetime
 
 
 class MainWindow:
@@ -28,6 +29,12 @@ class MainWindow:
         'text_primary': '#2c3e50', # 主要文字颜色
         'text_secondary': '#7f8c8d', # 次要文字颜色
     }
+
+    # 友情连接配置
+    FRIEND_LINKS = [
+        {"name": "中国市政工程协会", "url": "https://www.zgsz.org.cn/"},
+        {"name": "天津市市政公路行业协会", "url": "https://tjsz.org.cn/index.html/"},
+    ]
 
     def __init__(self, user):
         self.user = user
@@ -81,6 +88,22 @@ class MainWindow:
                               font=("Microsoft YaHei", 18, "bold"),
                               bg=self.COLORS['primary'], fg="white")
         title_label.pack(side=tk.LEFT)
+
+        # 中间 - 天气和时间显示
+        center_frame = tk.Frame(top_frame, bg=self.COLORS['primary'])
+        center_frame.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        # 天气标签
+        self.weather_label = tk.Label(center_frame, text="正在加载天气...",
+                                     font=("Microsoft YaHei", 10),
+                                     bg=self.COLORS['primary'], fg="#87CEEB")
+        self.weather_label.pack(pady=(8, 2))
+
+        # 时间标签
+        self.time_label = tk.Label(center_frame, text="",
+                                   font=("Microsoft YaHei", 10),
+                                   bg=self.COLORS['primary'], fg="white")
+        self.time_label.pack(pady=(0, 5))
 
         # 右侧 - 用户信息和退出
         right_frame = tk.Frame(top_frame, bg=self.COLORS['primary'])
@@ -151,13 +174,33 @@ class MainWindow:
         status_right = tk.Frame(status_frame, bg=self.COLORS['bg_white'])
         status_right.pack(side=tk.RIGHT, padx=10, pady=5)
 
-        import datetime
-        time_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-        time_label = tk.Label(status_right, text=f"当前时间: {time_str}",
+        self.time_label_status = tk.Label(status_right, text="",
                              bg=self.COLORS['bg_white'],
                              fg=self.COLORS['text_light'],
                              font=("Microsoft YaHei", 9))
-        time_label.pack(side=tk.LEFT)
+        self.time_label_status.pack(side=tk.LEFT)
+
+        # 状态栏中间 - 友情连接
+        status_center = tk.Frame(status_frame, bg=self.COLORS['bg_white'])
+        status_center.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        link_frame = tk.Frame(status_center, bg=self.COLORS['bg_white'])
+        link_frame.pack()
+
+        tk.Label(link_frame, text="友情连接: ", bg=self.COLORS['bg_white'],
+                fg=self.COLORS['text_light'], font=("Microsoft YaHei", 9)).pack(side=tk.LEFT)
+
+        for link in self.FRIEND_LINKS:
+            btn = tk.Label(link_frame, text=link['name'], bg=self.COLORS['bg_white'],
+                          fg=self.COLORS['primary'], font=("Microsoft YaHei", 9),
+                          cursor="hand2")
+            btn.pack(side=tk.LEFT, padx=10)
+            btn.bind("<Button-1>", lambda e, url=link['url']: self.open_link(url))
+
+        # 启动时间更新
+        self.update_time_display()
+        # 启动天气更新
+        self.update_weather_display()
 
     def create_notebook(self):
         """创建标签页 - 子类实现"""
@@ -214,6 +257,37 @@ class MainWindow:
             'normal_user': '普通用户'
         }
         return role_names.get(self.user['role'], '用户')
+
+    def update_time_display(self):
+        """更新时间显示"""
+        try:
+            time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.time_label.config(text=time_str)
+            self.time_label_status.config(text=time_str)
+        except:
+            pass
+        # 每秒更新
+        self.root.after(1000, self.update_time_display)
+
+    def update_weather_display(self):
+        """更新天气显示"""
+        try:
+            from utils.external_api import ExternalAPI
+            weather_text = ExternalAPI.get_weather_display_text()
+            self.weather_label.config(text=weather_text)
+        except Exception as e:
+            print(f"天气获取失败: {e}")
+            self.weather_label.config(text="天气: 加载中...")
+        # 每10分钟更新
+        self.root.after(600000, self.update_weather_display)
+
+    def open_link(self, url):
+        """打开外部链接"""
+        import webbrowser
+        try:
+            webbrowser.open(url)
+        except Exception as e:
+            messagebox.showerror("错误", f"无法打开链接: {e}")
 
     def logout(self):
         """退出登录 - 返回登录界面"""

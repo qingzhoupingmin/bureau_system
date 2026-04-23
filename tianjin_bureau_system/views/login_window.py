@@ -7,6 +7,7 @@ from tkinter import ttk, messagebox
 from services.auth_service import AuthService
 from config import SYSTEM_NAME
 from PIL import Image, ImageTk
+from utils.external_api import ExternalAPI
 import os
 
 
@@ -16,7 +17,7 @@ class LoginWindow:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title(f"{SYSTEM_NAME} - 登录")
-        self.root.geometry("500x450")
+        self.root.geometry("500x500")
         self.root.resizable(False, False)
         self.root.configure(bg='#f0f4f8')
 
@@ -24,11 +25,13 @@ class LoginWindow:
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
         x = (screen_width - 500) // 2
-        y = (screen_height - 450) // 2
-        self.root.geometry(f"500x450+{x}+{y}")
+        y = (screen_height - 500) // 2
+        self.root.geometry(f"500x500+{x}+{y}")
 
         self.current_user = None
+        self.current_time_text = None
         self.create_widgets()
+        self.start_time_update()
 
     def create_widgets(self):
         """创建界面组件"""
@@ -82,13 +85,29 @@ class LoginWindow:
                              cursor='hand2', relief='flat', command=self.do_login)
         login_btn.pack(fill='x', padx=20, pady=25)
 
-        # 绑定回车键
+# 绑定回车键
         self.password_entry.bind("Return", lambda e: self.do_login())
 
+        # 底部信息区域
+        bottom_frame = tk.Frame(self.root, bg='#f0f4f8')
+        bottom_frame.pack(side='bottom', fill='x', pady=(0, 10))
+
+        # 天气显示标签
+        self.weather_label = tk.Label(bottom_frame, text="正在加载天气...",
+                                      font=("Microsoft YaHei", 10),
+                                      bg='#f0f4f8', fg='#2e7d32')
+        self.weather_label.pack(pady=(0, 3))
+
+        # 时间显示标签
+        self.time_label = tk.Label(bottom_frame, text="正在加载时间...",
+                                   font=("Microsoft YaHei", 10),
+                                   bg='#f0f4f8', fg='#666666')
+        self.time_label.pack(pady=(0, 3))
+
         # 底部版权
-        footer_label = tk.Label(self.root, text="Copyright 2026 天津市市政工程局", 
+        footer_label = tk.Label(self.root, text="Copyright 2026 天津市市政工程局",
                                font=("Microsoft YaHei", 9), bg='#f0f4f8', fg='#888888')
-        footer_label.pack(side='bottom', pady=10)
+        footer_label.pack(side='bottom', pady=(0, 10))
 
     def do_login(self):
         """执行登录"""
@@ -110,3 +129,34 @@ class LoginWindow:
         """显示窗口并返回当前用户"""
         self.root.mainloop()
         return self.current_user
+
+    def start_time_update(self):
+        """启动时间和天气更新"""
+        # 先显示一次天气（启动时获取）
+        self.update_weather_display()
+        # 启动时间更新
+        self.update_time_display()
+
+    def update_weather_display(self):
+        """更新天气显示"""
+        try:
+            weather_text = ExternalAPI.get_weather_display_text()
+            self.weather_label.config(text=weather_text, fg='#2e7d32')
+        except Exception as e:
+            print(f"天气获取失败: {e}")
+            self.weather_label.config(text="天气: 加载中...", fg='#888888')
+
+        # 每10分钟更新一次天气
+        self.root.after(600000, self.update_weather_display)
+
+    def update_time_display(self):
+        """更新界面时间显示"""
+        try:
+            time_text, source = ExternalAPI.get_time_with_source(use_external=True)
+            self.time_label.config(text=f"当前时间: {time_text} ({source})", fg='#666666')
+        except Exception as e:
+            print(f"时间获取失败: {e}")
+            self.time_label.config(text="时间: 加载中...", fg='#888888')
+
+        # 每秒更新显示
+        self.root.after(1000, self.update_time_display)
