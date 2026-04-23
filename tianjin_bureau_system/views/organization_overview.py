@@ -713,12 +713,12 @@ class OrganizationOverview:
         self._create_overview_tab(self.parent, user)
 
     def _create_overview_tab(self, parent, user):
-        """创建单位概况选项卡"""
+        """创建单位概况选项卡 - 三栏布局"""
         # 清除现有内容
         for widget in self.parent.winfo_children():
             widget.destroy()
 
-        # 创建主框架
+        # 创建主框架（三栏布局）
         main_frame = tk.Frame(self.parent, bg=self.COLORS['bg_primary'])
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
@@ -732,65 +732,19 @@ class OrganizationOverview:
         )
         title_label.pack(pady=10)
 
-        # 创建选项卡
-        notebook = ttk.Notebook(main_frame)
-        notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # 创建三栏容器
+        content_frame = tk.Frame(main_frame, bg=self.COLORS['bg_primary'])
+        content_frame.pack(fill=tk.BOTH, expand=True)
 
-        # 获取用户信息
-        user_org_id = self.user.get('organization_id', 0) if self.user else 0
+        # 左侧栏 - 市政工程局介绍
+        left_frame = tk.Frame(content_frame, bg=self.COLORS['bg_secondary'],
+                              highlightbackground="#ddd", highlightthickness=1)
+        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
-        # 判断是否为基层单位用户（sub_unit_user）
-        is_sub_unit_user = self.user and self.user.get('role') == 'sub_unit_user'
-        # 判断是否为中层单位用户
-        is_unit_user = self.user and self.user.get('role') == 'unit_user'
-
-        # 基层单位用户：显示本单位（基层单位）介绍
-        if is_sub_unit_user and user_org_id >= 51:
-            my_unit_frame = tk.Frame(notebook, bg=self.COLORS['bg_primary'])
-            self._create_sub_unit_content(my_unit_frame, user_org_id)
-            notebook.add(my_unit_frame, text='本单位介绍')
-
-        # 中层单位用户：显示本单位介绍
-        elif is_unit_user and 21 <= user_org_id <= 40:
-            my_unit_frame = tk.Frame(notebook, bg=self.COLORS['bg_primary'])
-            self._create_my_unit_content(my_unit_frame, user_org_id)
-            notebook.add(my_unit_frame, text='本单位介绍')
-
-        # 局机关介绍（所有用户可见）
-        bureau_frame = tk.Frame(notebook, bg=self.COLORS['bg_primary'])
-        self._create_bureau_content(bureau_frame)
-        notebook.add(bureau_frame, text='市政工程局介绍')
-
-        # 机关处室选项卡
-        dept_frame = tk.Frame(notebook, bg=self.COLORS['bg_primary'])
-        self._create_department_content(dept_frame)
-        notebook.add(dept_frame, text='机关处室')
-
-    def _create_bureau_content(self, parent):
-        """创建市政工程局介绍内容"""
-        canvas = tk.Canvas(parent, bg=self.COLORS['bg_primary'])
-        scrollbar = ttk.Scrollbar(parent, orient=tk.VERTICAL, command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg=self.COLORS['bg_primary'])
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
-        canvas.create_window((0, 0), window=scrollable_frame, anchor=tk.NW)
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        # 局机关介绍卡片
-        bureau_card = tk.Frame(scrollable_frame, bg=self.COLORS['bg_secondary'], relief=tk.RAISED, bd=1)
-        bureau_card.pack(fill=tk.X, padx=10, pady=10)
-
-        tk.Label(bureau_card, text='天津市市政工程局',
-                font=('SimHei', 18, 'bold'),
+        tk.Label(left_frame, text='天津市市政工程局',
+                font=('SimHei', 14, 'bold'),
                 bg=self.COLORS['bg_secondary'],
-                fg=self.COLORS['primary']).pack(padx=15, pady=(15, 5))
+                fg=self.COLORS['primary']).pack(pady=(15, 10))
 
         bureau_intro = """主要职能为：
 （一）贯彻执行有关市政道桥、公路管理的法律、法规、规章和方针政策，起草相关地方性法规、规章草案和规范性文件并组织实施。
@@ -807,155 +761,155 @@ class OrganizationOverview:
 组织架构：
 • 局机关设有19个处室
 • 下辖20个事业单位"""
-        tk.Label(bureau_card, text=bureau_intro,
-                font=('SimHei', 11),
+
+        tk.Label(left_frame, text=bureau_intro,
+                font=('SimHei', 10),
                 bg=self.COLORS['bg_secondary'],
                 fg=self.COLORS['text_secondary'],
-                justify=tk.LEFT, anchor=tk.W, wraplength=750).pack(anchor=tk.W, padx=15, pady=10)
+                justify=tk.LEFT, anchor=tk.W, wraplength=300,
+                padx=15, pady=10).pack(fill=tk.BOTH, expand=True)
 
-    def _create_my_unit_content(self, parent, org_id):
-        """创建本单位介绍内容（下属单位用户）"""
-        # 创建画布和滚动条
-        canvas = tk.Canvas(parent, bg=self.COLORS['bg_primary'])
-        scrollbar = ttk.Scrollbar(parent, orient=tk.VERTICAL, command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg=self.COLORS['bg_primary'])
+        # 右侧栏容器（上下两栏）
+        right_frame = tk.Frame(content_frame, bg=self.COLORS['bg_primary'])
+        right_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
+        # 右上栏 - 内设处室
+        top_right_frame = tk.Frame(right_frame, bg=self.COLORS['bg_secondary'],
+                                   highlightbackground="#ddd", highlightthickness=1)
+        top_right_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
 
-        canvas.create_window((0, 0), window=scrollable_frame, anchor=tk.NW)
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        # 获取本单位信息（使用UNIT_DETAILS）
-        unit_info = self.UNIT_DETAILS.get(org_id, {})
-
-        # 本单位详情卡片
-        card = tk.Frame(scrollable_frame, bg=self.COLORS['bg_secondary'], relief=tk.RAISED, bd=1)
-        card.pack(fill=tk.X, padx=10, pady=10)
-
-        # 单位名称
-        tk.Label(card, text=unit_info.get('name', '本单位'),
-                font=('SimHei', 16, 'bold'),
-                bg=self.COLORS['bg_secondary'],
-                fg=self.COLORS['primary']).pack(padx=15, pady=(15, 5))
-
-        # 职能职责标题
-        tk.Label(card, text='主要职能:',
+        tk.Label(top_right_frame, text='内设处室',
                 font=('SimHei', 12, 'bold'),
                 bg=self.COLORS['bg_secondary'],
-                fg=self.COLORS['text_primary']).pack(anchor=tk.W, padx=15, pady=(10, 5))
+                fg=self.COLORS['primary']).pack(pady=(10, 5))
 
-        # 职能列表
-        functions = unit_info.get('functions', [])
-        for func in functions:
-            tk.Label(card, text=f'• {func}',
-                    font=('SimHei', 10),
-                    bg=self.COLORS['bg_secondary'],
-                    fg=self.COLORS['text_secondary'],
-                    anchor=tk.W).pack(anchor=tk.W, padx=25, pady=2)
+        # 处室容器 - 使用网格布局，3列
+        dept_container = tk.Frame(top_right_frame, bg=self.COLORS['bg_secondary'])
+        dept_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
 
-        # 简要职责
-        tk.Label(card, text=f"概括: {unit_info.get('responsibilities', '')}",
-                font=('SimHei', 10, 'italic'),
+        # 遍历所有处室，创建可点击按钮，3列布局
+        sorted_dept_ids = sorted(self.DEPARTMENT_DETAILS.keys())
+        for idx, dept_id in enumerate(sorted_dept_ids):
+            dept_info = self.DEPARTMENT_DETAILS[dept_id]
+            row = idx // 3
+            col = idx % 3
+
+            btn_frame = tk.Frame(dept_container, bg=self.COLORS['bg_secondary'], relief=tk.RAISED, bd=1)
+            btn_frame.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
+
+            # 设置列权重
+            dept_container.grid_columnconfigure(col, weight=1)
+
+            dept_btn = tk.Label(
+                btn_frame,
+                text=f"{dept_id}. {dept_info['name']}",
+                font=('SimHei', 10),
                 bg=self.COLORS['bg_secondary'],
-                fg=self.COLORS['primary'],
-                anchor=tk.W).pack(anchor=tk.W, padx=15, pady=(10, 15))
+                fg='#1a5fb4',
+                cursor='hand2',
+                anchor=tk.W,
+                padx=10,
+                pady=8
+            )
+            dept_btn.pack(fill=tk.X)
+            dept_btn.bind("<Button-1>", lambda e, did=dept_id: self._show_department_detail(did))
+            dept_btn.bind("<Enter>", lambda e, btn=dept_btn: btn.config(bg='#e3f2fd'))
+            dept_btn.bind("<Leave>", lambda e, btn=dept_btn: btn.config(bg=self.COLORS['bg_secondary']))
 
-        # 显示下属单位（如果有）
-        if 'sub_units' in unit_info and unit_info['sub_units']:
-            sub_unit_card = tk.Frame(scrollable_frame, bg=self.COLORS['bg_secondary'], relief=tk.RAISED, bd=1)
-            sub_unit_card.pack(fill=tk.X, padx=10, pady=10)
+        # 右下栏 - 下属单位
+        bottom_right_frame = tk.Frame(right_frame, bg=self.COLORS['bg_secondary'],
+                                      highlightbackground="#ddd", highlightthickness=1)
+        bottom_right_frame.pack(fill=tk.BOTH, expand=True)
 
-            tk.Label(sub_unit_card, text='下属单位',
-                    font=('SimHei', 14, 'bold'),
-                    bg=self.COLORS['bg_secondary'],
-                    fg=self.COLORS['primary']).pack(padx=15, pady=(15, 5))
-
-            tk.Label(sub_unit_card, text=unit_info.get('sub_unit_desc', ''),
-                    font=('SimHei', 10),
-                    bg=self.COLORS['bg_secondary'],
-                    fg=self.COLORS['text_secondary'],
-                    anchor=tk.W).pack(anchor=tk.W, padx=15, pady=(0, 10))
-
-            # 统一展示所有下属单位
-            for su_id, su_name in unit_info['sub_units'].items():
-                tk.Label(sub_unit_card, text=f'• {su_name}',
-                        font=('SimHei', 10),
-                        bg=self.COLORS['bg_secondary'],
-                        fg=self.COLORS['text_secondary'],
-                        anchor=tk.W).pack(anchor=tk.W, padx=25, pady=2)
-
-    def _create_sub_unit_content(self, parent, org_id):
-        """创建基层单位介绍内容"""
-        # 创建画布和滚动条
-        canvas = tk.Canvas(parent, bg=self.COLORS['bg_primary'])
-        scrollbar = ttk.Scrollbar(parent, orient=tk.VERTICAL, command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg=self.COLORS['bg_primary'])
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
-        canvas.create_window((0, 0), window=scrollable_frame, anchor=tk.NW)
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        # 获取基层单位信息
-        unit_info = self.SUB_UNIT_DETAILS.get(org_id, {})
-
-        # 基层单位详情卡片
-        card = tk.Frame(scrollable_frame, bg=self.COLORS['bg_secondary'], relief=tk.RAISED, bd=1)
-        card.pack(fill=tk.X, padx=10, pady=10)
-
-        # 单位名称
-        tk.Label(card, text=unit_info.get('name', '本单位'),
-                font=('SimHei', 16, 'bold'),
-                bg=self.COLORS['bg_secondary'],
-                fg=self.COLORS['primary']).pack(padx=15, pady=(15, 5))
-
-        # 职能职责标题
-        tk.Label(card, text='主要职能:',
+        tk.Label(bottom_right_frame, text='下属单位',
                 font=('SimHei', 12, 'bold'),
                 bg=self.COLORS['bg_secondary'],
-                fg=self.COLORS['text_primary']).pack(anchor=tk.W, padx=15, pady=(10, 5))
+                fg=self.COLORS['primary']).pack(pady=(10, 5))
 
-        # 职能列表
-        functions = unit_info.get('functions', [])
-        if functions:
-            for func in functions:
-                tk.Label(card, text=f'• {func}',
-                        font=('SimHei', 10),
-                        bg=self.COLORS['bg_secondary'],
-                        fg=self.COLORS['text_secondary'],
-                        anchor=tk.W).pack(anchor=tk.W, padx=25, pady=2)
+        # 下属单位容器 - 使用网格布局，2列
+        unit_container = tk.Frame(bottom_right_frame, bg=self.COLORS['bg_secondary'])
+        unit_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
+
+        # 遍历所有下属单位，创建可点击按钮，2列布局
+        sorted_unit_ids = sorted(self.UNIT_DETAILS.keys())
+        for idx, unit_id in enumerate(sorted_unit_ids):
+            unit_info = self.UNIT_DETAILS[unit_id]
+            unit_name = unit_info['name']
+
+            # 简化名称显示
+            display_name = unit_name
+            if '（' in unit_name:
+                display_name = unit_name.split('（')[0]
+            elif '(' in unit_name:
+                display_name = unit_name.split('(')[0]
+
+            row = idx // 2
+            col = idx % 2
+
+            btn_frame = tk.Frame(unit_container, bg=self.COLORS['bg_secondary'], relief=tk.RAISED, bd=1)
+            btn_frame.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
+
+            # 设置列权重
+            unit_container.grid_columnconfigure(col, weight=1)
+
+            unit_btn = tk.Label(
+                btn_frame,
+                text=f"{idx + 1}. {display_name}",
+                font=('SimHei', 10),
+                bg=self.COLORS['bg_secondary'],
+                fg='#1a5fb4',
+                cursor='hand2',
+                anchor=tk.W,
+                padx=10,
+                pady=8
+            )
+            unit_btn.pack(fill=tk.X)
+            unit_btn.bind("<Button-1>", lambda e, uid=unit_id: self._show_unit_detail(uid))
+            unit_btn.bind("<Enter>", lambda e, btn=unit_btn: btn.config(bg='#e3f2fd'))
+            unit_btn.bind("<Leave>", lambda e, btn=unit_btn: btn.config(bg=self.COLORS['bg_secondary']))
+
+            # 如果有下属单位，显示标记
+            if 'sub_units' in unit_info and unit_info['sub_units']:
+                sub_count = len(unit_info['sub_units'])
+                tk.Label(
+                    btn_frame,
+                    text=f"    （包含 {sub_count} 个下属单位）",
+                    font=('SimHei', 9),
+                    bg=self.COLORS['bg_secondary'],
+                    fg=self.COLORS['text_secondary'],
+                    anchor=tk.W
+                ).pack(fill=tk.X, padx=10)
+
+    def _show_unit_detail(self, unit_id):
+        """显示单位详情弹窗"""
+        # 判断是下属单位还是基层单位
+        if unit_id in self.UNIT_DETAILS:
+            unit_info = self.UNIT_DETAILS[unit_id]
+            unit_type = "下属单位"
+        elif unit_id in self.SUB_UNIT_DETAILS:
+            unit_info = self.SUB_UNIT_DETAILS[unit_id]
+            unit_type = "基层单位"
         else:
-            tk.Label(card, text='暂无详细信息',
-                    font=('SimHei', 10),
-                    bg=self.COLORS['bg_secondary'],
-                    fg=self.COLORS['text_secondary'],
-                    anchor=tk.W).pack(anchor=tk.W, padx=25, pady=2)
+            messagebox.showerror("错误", "未找到单位信息")
+            return
 
-        # 简要职责
-        responsibilities = unit_info.get('responsibilities', '暂无')
-        tk.Label(card, text=f"概括: {responsibilities}",
-                font=('SimHei', 10, 'italic'),
-                bg=self.COLORS['bg_secondary'],
-                fg=self.COLORS['primary'],
-                anchor=tk.W).pack(anchor=tk.W, padx=15, pady=(10, 15))
+        # 创建弹窗
+        detail_window = tk.Toplevel(self.parent)
+        detail_window.title(f"{unit_type}详情")
+        detail_window.geometry("600x500")
+        detail_window.configure(bg=self.COLORS['bg_primary'])
 
-    def _create_department_content(self, parent):
-        """创建机关处室内容"""
-        # 创建画布和滚动条
-        canvas = tk.Canvas(parent, bg=self.COLORS['bg_primary'])
-        scrollbar = ttk.Scrollbar(parent, orient=tk.VERTICAL, command=canvas.yview)
+        # 居中显示
+        detail_window.update_idletasks()
+        width = detail_window.winfo_width()
+        height = detail_window.winfo_height()
+        x = (detail_window.winfo_screenwidth() // 2) - (width // 2)
+        y = (detail_window.winfo_screenheight() // 2) - (height // 2)
+        detail_window.geometry(f'{width}x{height}+{x}+{y}')
+
+        # 创建滚动区域
+        canvas = tk.Canvas(detail_window, bg=self.COLORS['bg_primary'])
+        scrollbar = ttk.Scrollbar(detail_window, orient=tk.VERTICAL, command=canvas.yview)
         scrollable_frame = tk.Frame(canvas, bg=self.COLORS['bg_primary'])
 
         scrollable_frame.bind(
@@ -966,188 +920,183 @@ class OrganizationOverview:
         canvas.create_window((0, 0), window=scrollable_frame, anchor=tk.NW)
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        # 使用网格布局，每行显示3个处室卡片
-        cols_per_row = 3
-        for idx, (dept_id, dept_info) in enumerate(self.DEPARTMENT_DETAILS.items()):
-            row = idx // cols_per_row
-            col = idx % cols_per_row
-            self._create_department_card_grid(scrollable_frame, dept_id, dept_info, row, col)
-
-    def _create_department_card(self, parent, dept_id, dept_info):
-        """创建处室卡片"""
-        card = tk.Frame(parent, bg=self.COLORS['bg_secondary'], relief=tk.RAISED, bd=1)
-        card.pack(fill=tk.X, padx=10, pady=5)
-
-        # 处室名称
-        name_label = tk.Label(
-            card,
-            text=f"{dept_id}. {dept_info['name']}",
-            font=('SimHei', 12, 'bold'),
-            bg=self.COLORS['bg_secondary'],
-            fg=self.COLORS['text_primary'],
-            anchor=tk.W
-        )
-        name_label.pack(fill=tk.X, padx=10, pady=(10, 5))
-
-        # 职能职责
-        func_label = tk.Label(
-            card,
-            text='主要职能:',
-            font=('SimHei', 10, 'bold'),
-            bg=self.COLORS['bg_secondary'],
-            fg=self.COLORS['text_secondary'],
-            anchor=tk.W
-        )
-        func_label.pack(fill=tk.X, padx=10, pady=(5, 0))
-
-        for func in dept_info['functions']:
-            func_item = tk.Label(
-                card,
-                text=f"  • {func}",
-                font=('SimHei', 9),
-                bg=self.COLORS['bg_secondary'],
-                fg=self.COLORS['text_secondary'],
-                anchor=tk.W,
-                justify=tk.LEFT
-            )
-            func_item.pack(fill=tk.X, padx=20, pady=1)
-
-        # 职责概述
-        resp_label = tk.Label(
-            card,
-            text=f"职责: {dept_info['responsibilities']}",
-            font=('SimHei', 9, 'italic'),
-            bg=self.COLORS['bg_secondary'],
-            fg=self.COLORS['accent'],
-            anchor=tk.W
-        )
-        resp_label.pack(fill=tk.X, padx=10, pady=(5, 10))
-
-    def _create_department_card_grid(self, parent, dept_id, dept_info, row, col):
-        """创建处室卡片（网格布局）"""
-        card = tk.Frame(parent, bg=self.COLORS['bg_secondary'], relief=tk.RAISED, bd=1)
-        card.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
-
-        # 设置列权重
-        parent.grid_columnconfigure(col, weight=1)
-
-        # 处室名称
-        name_label = tk.Label(
-            card,
-            text=f"{dept_id}. {dept_info['name']}",
-            font=('SimHei', 11, 'bold'),
-            bg=self.COLORS['bg_secondary'],
-            fg=self.COLORS['text_primary'],
-            anchor=tk.W
-        )
-        name_label.pack(fill=tk.X, padx=8, pady=(8, 3))
-
-        # 职能职责
-        func_label = tk.Label(
-            card,
-            text='主要职能:',
-            font=('SimHei', 9, 'bold'),
-            bg=self.COLORS['bg_secondary'],
-            fg=self.COLORS['text_secondary'],
-            anchor=tk.W
-        )
-        func_label.pack(fill=tk.X, padx=8, pady=(3, 0))
-
-        for func in dept_info['functions']:
-            func_item = tk.Label(
-                card,
-                text=f"  • {func}",
-                font=('SimHei', 8),
-                bg=self.COLORS['bg_secondary'],
-                fg=self.COLORS['text_secondary'],
-                anchor=tk.W,
-                justify=tk.LEFT
-            )
-            func_item.pack(fill=tk.X, padx=15, pady=0)
-
-        # 职责概述
-        resp_label = tk.Label(
-            card,
-            text=f"职责: {dept_info['responsibilities']}",
-            font=('SimHei', 8, 'italic'),
-            bg=self.COLORS['bg_secondary'],
-            fg=self.COLORS['accent'],
-            anchor=tk.W
-        )
-        resp_label.pack(fill=tk.X, padx=8, pady=(3, 8))
-
-    def _create_unit_content(self, parent):
-        """创建下属单位内容"""
-        # 创建画布和滚动条
-        canvas = tk.Canvas(parent, bg=self.COLORS['bg_primary'])
-        scrollbar = ttk.Scrollbar(parent, orient=tk.VERTICAL, command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg=self.COLORS['bg_primary'])
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
-        canvas.create_window((0, 0), window=scrollable_frame, anchor=tk.NW)
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        # 遍历所有下属单位
-        for unit_id, unit_info in self.UNIT_DETAILS.items():
-            self._create_unit_card(scrollable_frame, unit_id, unit_info)
-
-    def _create_unit_card(self, parent, unit_id, unit_info):
-        """创建下属单位卡片"""
-        card = tk.Frame(parent, bg=self.COLORS['bg_secondary'], relief=tk.RAISED, bd=1)
-        card.pack(fill=tk.X, padx=10, pady=5)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y, pady=10)
 
         # 单位名称
-        name_label = tk.Label(
-            card,
-            text=f"{unit_id}. {unit_info['name']}",
-            font=('SimHei', 12, 'bold'),
-            bg=self.COLORS['bg_secondary'],
-            fg=self.COLORS['text_primary'],
-            anchor=tk.W,
-            wraplength=700
-        )
-        name_label.pack(fill=tk.X, padx=10, pady=(10, 5))
+        tk.Label(
+            scrollable_frame,
+            text=unit_info['name'],
+            font=('SimHei', 18, 'bold'),
+            bg=self.COLORS['bg_primary'],
+            fg=self.COLORS['primary']
+        ).pack(pady=(10, 20))
 
-        # 职能职责
-        func_label = tk.Label(
-            card,
+        # 主要职能标题
+        tk.Label(
+            scrollable_frame,
             text='主要职能:',
-            font=('SimHei', 10, 'bold'),
-            bg=self.COLORS['bg_secondary'],
-            fg=self.COLORS['text_secondary'],
-            anchor=tk.W
-        )
-        func_label.pack(fill=tk.X, padx=10, pady=(5, 0))
+            font=('SimHei', 12, 'bold'),
+            bg=self.COLORS['bg_primary'],
+            fg=self.COLORS['text_primary']
+        ).pack(anchor=tk.W, padx=15, pady=(10, 5))
 
-        for func in unit_info['functions']:
-            func_item = tk.Label(
-                card,
-                text=f"  • {func}",
-                font=('SimHei', 9),
-                bg=self.COLORS['bg_secondary'],
+        # 职能列表
+        for func in unit_info.get('functions', []):
+            tk.Label(
+                scrollable_frame,
+                text=f'• {func}',
+                font=('SimHei', 10),
+                bg=self.COLORS['bg_primary'],
                 fg=self.COLORS['text_secondary'],
                 anchor=tk.W,
-                justify=tk.LEFT
-            )
-            func_item.pack(fill=tk.X, padx=20, pady=1)
+                wraplength=550
+            ).pack(anchor=tk.W, padx=30, pady=2)
 
         # 职责概述
-        resp_label = tk.Label(
-            card,
-            text=f"职责: {unit_info['responsibilities']}",
-            font=('SimHei', 9, 'italic'),
-            bg=self.COLORS['bg_secondary'],
+        tk.Label(
+            scrollable_frame,
+            text=f"职责概括: {unit_info.get('responsibilities', '暂无信息')}",
+            font=('SimHei', 10, 'italic'),
+            bg=self.COLORS['bg_primary'],
             fg=self.COLORS['accent'],
-            anchor=tk.W
+            anchor=tk.W,
+            wraplength=550
+        ).pack(anchor=tk.W, padx=15, pady=(15, 10))
+
+        # 如果是下属单位，显示下属单位的下属单位
+        if 'sub_units' in unit_info and unit_info['sub_units']:
+            tk.Label(
+                scrollable_frame,
+                text='下属单位:',
+                font=('SimHei', 12, 'bold'),
+                bg=self.COLORS['bg_primary'],
+                fg=self.COLORS['text_primary']
+            ).pack(anchor=tk.W, padx=15, pady=(20, 5))
+
+            tk.Label(
+                scrollable_frame,
+                text=unit_info.get('sub_unit_desc', ''),
+                font=('SimHei', 10),
+                bg=self.COLORS['bg_primary'],
+                fg=self.COLORS['text_secondary'],
+                anchor=tk.W,
+                wraplength=550
+            ).pack(anchor=tk.W, padx=15, pady=10)
+
+            # 创建下属单位按钮列表
+            for sub_id, sub_name in unit_info['sub_units'].items():
+                sub_btn_frame = tk.Frame(scrollable_frame, bg=self.COLORS['bg_secondary'], relief=tk.RAISED, bd=1)
+                sub_btn_frame.pack(fill=tk.X, padx=15, pady=3)
+
+                sub_btn = tk.Label(
+                    sub_btn_frame,
+                    text=f"  {sub_name}",
+                    font=('SimHei', 10),
+                    bg=self.COLORS['bg_secondary'],
+                    fg='#1a5fb4',
+                    cursor='hand2',
+                    anchor=tk.W,
+                    padx=10,
+                    pady=8
+                )
+                sub_btn.pack(fill=tk.X)
+
+                # 绑定点击事件，显示基层单位详情
+                sub_btn.bind("<Button-1>", lambda e, sid=sub_id: self._show_unit_detail(sid))
+
+                # 鼠标悬停效果
+                sub_btn.bind("<Enter>", lambda e, btn=sub_btn: btn.config(bg='#e3f2fd'))
+                sub_btn.bind("<Leave>", lambda e, btn=sub_btn: btn.config(bg=self.COLORS['bg_secondary']))
+
+    def _show_department_detail(self, dept_id):
+        """显示处室详情弹窗"""
+        if dept_id not in self.DEPARTMENT_DETAILS:
+            messagebox.showerror("错误", "未找到处室信息")
+            return
+
+        dept_info = self.DEPARTMENT_DETAILS[dept_id]
+
+        # 创建弹窗
+        detail_window = tk.Toplevel(self.parent)
+        detail_window.title(f"处室详情 - {dept_info['name']}")
+        detail_window.geometry("600x500")
+        detail_window.configure(bg=self.COLORS['bg_primary'])
+
+        # 居中显示
+        detail_window.update_idletasks()
+        width = detail_window.winfo_width()
+        height = detail_window.winfo_height()
+        x = (detail_window.winfo_screenwidth() // 2) - (width // 2)
+        y = (detail_window.winfo_screenheight() // 2) - (height // 2)
+        detail_window.geometry(f'{width}x{height}+{x}+{y}')
+
+        # 创建滚动区域
+        canvas = tk.Canvas(detail_window, bg=self.COLORS['bg_primary'])
+        scrollbar = ttk.Scrollbar(detail_window, orient=tk.VERTICAL, command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg=self.COLORS['bg_primary'])
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
-        resp_label.pack(fill=tk.X, padx=10, pady=(5, 10))
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor=tk.NW)
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y, pady=10)
+
+        # 处室名称
+        tk.Label(
+            scrollable_frame,
+            text=dept_info['name'],
+            font=('SimHei', 18, 'bold'),
+            bg=self.COLORS['bg_primary'],
+            fg=self.COLORS['primary']
+        ).pack(pady=(10, 20))
+
+        # 主要职能标题
+        tk.Label(
+            scrollable_frame,
+            text='主要职能:',
+            font=('SimHei', 12, 'bold'),
+            bg=self.COLORS['bg_primary'],
+            fg=self.COLORS['text_primary']
+        ).pack(anchor=tk.W, padx=15, pady=(10, 5))
+
+        # 职能列表
+        for func in dept_info.get('functions', []):
+            tk.Label(
+                scrollable_frame,
+                text=f'• {func}',
+                font=('SimHei', 10),
+                bg=self.COLORS['bg_primary'],
+                fg=self.COLORS['text_secondary'],
+                anchor=tk.W,
+                wraplength=550
+            ).pack(anchor=tk.W, padx=30, pady=2)
+
+        # 职责概述
+        tk.Label(
+            scrollable_frame,
+            text=f"职责概括: {dept_info.get('responsibilities', '暂无信息')}",
+            font=('SimHei', 10, 'italic'),
+            bg=self.COLORS['bg_primary'],
+            fg=self.COLORS['accent'],
+            anchor=tk.W,
+            wraplength=550
+        ).pack(anchor=tk.W, padx=15, pady=(15, 10))
+
+        # 关闭按钮
+        tk.Button(
+            detail_window,
+            text="关闭",
+            command=detail_window.destroy,
+            font=('SimHei', 10),
+            bg=self.COLORS['primary'],
+            fg='white',
+            relief=tk.FLAT,
+            padx=20,
+            pady=5
+        ).pack(pady=10)

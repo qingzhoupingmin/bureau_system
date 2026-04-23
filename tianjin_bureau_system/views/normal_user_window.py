@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-下属单位窗口 - 包含所有交互功能
+下属单位窗口 - 根据中层/基层单位显示不同功能
 """
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -10,7 +10,12 @@ from services.message_service import MessageService
 from services.auth_service import AuthService
 from services.research_service import ResearchService
 from services.budget_service import BudgetService
+from services.document_service import DocumentService
 from db.connection import db
+
+
+# 中层单位ID列表
+MIDDLE_UNITS = {21, 22, 23, 26, 27, 31, 38, 39, 41, 42}  # 公路处、高速处、道桥处、研究院、设计院、建设公司、地铁处、巡查处、超治办、养护工程处
 
 
 class NormalUserWindow(MainWindow):
@@ -32,27 +37,46 @@ class NormalUserWindow(MainWindow):
         # 默认显示单位概况
         self.show_overview()
 
+    def is_middle_unit(self):
+        """判断是否为中层单位"""
+        return self.user.get('organization_id', 0) in MIDDLE_UNITS
+
     def create_left_sidebar(self):
         """创建左侧导航栏"""
         sidebar = tk.Frame(self.main_frame, bg=self.COLORS['primary'], width=200)
         self.paned.add(sidebar, minsize=200)
 
+        # 获取单位信息
+        from models.organization import Organization
+        org = Organization.get_by_id(self.user.get('organization_id', 0))
+        org_name = org['name'] if org else '下属单位'
+
         # 导航标题
-        nav_title = tk.Label(sidebar, text="功能导航", font=("Microsoft YaHei", 14, "bold"),
+        nav_title = tk.Label(sidebar, text=org_name, font=("Microsoft YaHei", 14, "bold"),
                             bg=self.COLORS['primary'], fg="white")
         nav_title.pack(pady=20)
 
-        # 导航按钮
-        nav_items = [
-            ("单位概况", self.show_overview),
-            ("单位资产", self.show_assets),
-            ("资产申请", self.show_asset_apply),
-            ("公文提交", self.show_document_submit),
-            ("收文查看", self.show_document_receive),
-            ("草稿管理", self.show_draft_manage),
-            ("预算申报", self.show_budget_apply),
-            ("个人中心", self.show_profile),
-        ]
+        # 根据是否为中层单位显示不同菜单
+        if self.is_middle_unit():
+            # 中层单位菜单
+            nav_items = [
+                ("单位概况", self.show_overview),
+                ("业务办理", self.show_business),
+                ("单位资产", self.show_assets),
+                ("资产申请", self.show_asset_apply),
+                ("公文管理", self.show_documents),
+                ("预算申报", self.show_budget_apply),
+                ("个人中心", self.show_profile),
+            ]
+        else:
+            # 基层单位菜单 - 简化版
+            nav_items = [
+                ("单位概况", self.show_overview),
+                ("单位资产", self.show_assets),
+                ("资产申请", self.show_asset_apply),
+                ("公文沟通", self.show_documents),
+                ("个人中心", self.show_profile),
+            ]
 
         for text, command in nav_items:
             btn = tk.Button(sidebar, text=text, font=("Microsoft YaHei", 11),
@@ -60,6 +84,370 @@ class NormalUserWindow(MainWindow):
                            relief=tk.FLAT, cursor="hand2",
                            command=command)
             btn.pack(fill=tk.X, padx=15, pady=5)
+
+    def get_unit_business(self):
+        """获取中层单位的业务功能"""
+        org_id = self.user.get('organization_id', 0)
+
+        unit_business = {
+            21: {  # 公路处
+                'name': '公路处',
+                'business': [
+                    ('公路养护', '管理公路养护工作'),
+                    ('路政管理', '管理路政执法'),
+                    ('经费管理', '管理养护经费'),
+                ]
+            },
+            22: {  # 高速处
+                'name': '高速公路管理处',
+                'business': [
+                    ('收费管理', '高速公路收费管理'),
+                    ('路政管理', '高速路政执法'),
+                    ('养护管理', '高速公路养护'),
+                ]
+            },
+            23: {  # 道桥处
+                'name': '道路桥梁管理处',
+                'business': [
+                    ('设施管理', '管理市政设施'),
+                    ('养护工程', '管理养护项目'),
+                    ('应急处置', '应急抢险管理'),
+                ]
+            },
+            26: {  # 研究院
+                'name': '市政工程研究院',
+                'business': [
+                    ('科研管理', '科研项目管理'),
+                    ('检测服务', '工程质量检测'),
+                    ('技术咨询', '技术服务咨询'),
+                ]
+            },
+            27: {  # 设计院
+                'name': '市政工程设计研究院',
+                'business': [
+                    ('工程设计', '市政工程设计'),
+                    ('方案审查', '设计方案审查'),
+                    ('技术服务', '技术支持服务'),
+                ]
+            },
+            31: {  # 建设公司
+                'name': '市政工程建设公司',
+                'business': [
+                    ('工程建设', '工程建设管理'),
+                    ('安全管理', '施工安全管理'),
+                    ('质量监督', '工程质量监督'),
+                ]
+            },
+            38: {  # 地铁处
+                'name': '地铁管理处',
+                'business': [
+                    ('运营管理', '地铁运营管理'),
+                    ('设备管理', '地铁设备管理'),
+                    ('安全管理', '安全管理'),
+                ]
+            },
+            39: {  # 市政公路巡查管理处
+                'name': '市政公路巡查管理处',
+                'business': [
+                    ('公路巡查', '公路路政巡查管理'),
+                    ('病害上报', '道路病害信息采集上报'),
+                    ('巡查统计', '巡查工作统计报表'),
+                ]
+            },
+            41: {  # 公路治理车辆超限超载管理办公室
+                'name': '公路治理车辆超限超载管理办公室',
+                'business': [
+                    ('超限治理', '治理车辆超限超载'),
+                    ('源头监管', '货运源头监管'),
+                    ('案件处理', '超限违法案件处理'),
+                ]
+            },
+            42: {  # 公路养护工程处
+                'name': '公路养护工程处',
+                'business': [
+                    ('养护工程', '公路养护工程管理'),
+                    ('设施维护', '公路设施维护'),
+                    ('应急养护', '公路应急养护抢修'),
+                ]
+            },
+        }
+
+        return unit_business.get(org_id, {'name': '下属单位', 'business': [('业务管理', '单位业务管理')]})
+
+    def show_business(self):
+        """显示业务办理 - 中层单位"""
+        self.clear_right_frame()
+
+        unit_info = self.get_unit_business()
+        unit_name = unit_info['name']
+        business_list = unit_info['business']
+
+        # 标题
+        title_frame = tk.Frame(self.right_frame, bg=self.COLORS['bg_white'])
+        title_frame.pack(fill=tk.X, padx=20, pady=10)
+        tk.Label(title_frame, text=f"{unit_name} - 业务办理", font=("Microsoft YaHei", 18, "bold"),
+                bg=self.COLORS['bg_white'], fg=self.COLORS['primary']).pack(side=tk.LEFT)
+
+        # 业务功能卡片区域
+        business_frame = tk.Frame(self.right_frame, bg=self.COLORS['bg_light'])
+        business_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+
+        # 创建业务卡片（每行3个）
+        for i, (business_name, business_desc) in enumerate(business_list):
+            row = i // 3
+            col = i % 3
+
+            card_frame = tk.Frame(business_frame, bg=self.COLORS['bg_secondary'],
+                                 relief=tk.RAISED, bd=1)
+            card_frame.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")
+
+            name_label = tk.Label(card_frame, text=business_name,
+                                 font=("Microsoft YaHei", 12, "bold"),
+                                 bg=self.COLORS['bg_secondary'],
+                                 fg=self.COLORS['primary'])
+            name_label.pack(pady=(15, 5))
+
+            desc_label = tk.Label(card_frame, text=business_desc,
+                                 font=("Microsoft YaHei", 9),
+                                 bg=self.COLORS['bg_secondary'],
+                                 fg=self.COLORS['text_secondary'],
+                                 wraplength=200)
+            desc_label.pack(pady=(0, 10))
+
+            btn_frame = tk.Frame(card_frame, bg=self.COLORS['bg_secondary'])
+            btn_frame.pack(pady=(0, 15))
+
+            btn = tk.Button(btn_frame, text="进入办理",
+                           bg=self.COLORS['primary'], fg="white",
+                           font=("Microsoft YaHei", 9),
+                           relief=tk.FLAT,
+                           command=lambda name=business_name: self.handle_unit_business(name))
+            btn.pack()
+
+        for i in range(3):
+            business_frame.grid_columnconfigure(i, weight=1)
+
+    def handle_unit_business(self, business_name):
+        """处理中层单位业务 - 与上级处室业务对应"""
+        org_id = self.user.get('organization_id', 0)
+
+        # 中层单位业务与上级处室业务的映射关系
+        # 公路处(21)→设施养护处(4), 高速处(22)→设施养护处(4), 道桥处(23)→设施管理处(3)+设施养护处(4)
+        # 研究院(26)→科技处(12), 设计院(27)→规划处(6)+建设管理处(5)
+        # 建设公司(31)→建设管理处(5), 地铁处(38)→建设管理处(5)+安全保卫处(13)
+
+        business_map = {
+            # 公路处业务
+            '公路养护': ('show_facility_maintenance', '公路养护管理'),
+            '路政管理': ('show_facility_management', '路政执法管理'),
+            '经费管理': ('show_budget_apply', '养护经费管理'),
+
+            # 高速处业务
+            '收费管理': ('show_facility_management', '收费管理'),
+            '高速路政': ('show_facility_management', '高速路政管理'),
+            '养护管理': ('show_facility_maintenance', '高速公路养护'),
+
+            # 道桥处业务
+            '设施管理': ('show_facility_management', '市政设施管理'),
+            '养护工程': ('show_facility_maintenance', '养护工程项目'),
+            '应急处置': ('show_emergency', '应急抢险管理'),
+
+            # 研究院业务
+            '科研管理': ('show_research', '科研项目管理'),
+            '检测服务': ('show_tech_service', '质量检测服务'),
+            '技术咨询': ('show_tech_service', '技术服务咨询'),
+
+            # 设计院业务
+            '工程设计': ('show_design', '工程设计管理'),
+            '方案审查': ('show_design_review', '设计方案审查'),
+            '技术支持': ('show_tech_service', '技术支持服务'),
+
+            # 建设公司业务
+            '工程建设': ('show_construction', '工程建设管理'),
+            '安全管理': ('show_safety', '施工安全管理'),
+            '质量监督': ('show_quality', '工程质量监督'),
+
+            # 地铁处业务
+            '运营管理': ('show_operation', '地铁运营管理'),
+            '设备管理': ('show_facility_management', '地铁设备管理'),
+            '安全管理': ('show_safety', '地铁安全管理'),
+
+            # 市政公路巡查管理处业务
+            '公路巡查': ('show_inspection', '公路巡查管理'),
+            '病害上报': ('show_damage_report', '道路病害上报'),
+            '巡查统计': ('show_inspection_stats', '巡查统计报表'),
+
+            # 超治办业务
+            '超限治理': ('show_overload_control', '超限超载治理'),
+            '源头监管': ('show_source_supervision', '货运源头监管'),
+            '案件处理': ('show_overload_case', '超限违法案件处理'),
+
+            # 公路养护工程处业务
+            '养护工程': ('show_maintenance_project', '公路养护工程'),
+            '设施维护': ('show_facility_maintenance', '公路设施维护'),
+            '应急养护': ('show_emergency_maintenance', '公路应急养护'),
+        }
+
+        if business_name in business_map:
+            method_name, title = business_map[business_name]
+            if hasattr(self, method_name):
+                getattr(self, method_name)()
+            else:
+                self._show_content_page(title, f"{title}功能正在完善中...")
+        else:
+            self._show_content_page(business_name, f"{business_name}功能正在完善中...")
+
+    def show_documents(self):
+        """显示公文沟通 - 统一界面"""
+        self.clear_right_frame()
+
+        # 根据单位类型显示不同内容
+        if self.is_middle_unit():
+            # 中层单位：公文管理（可提交、接收、查看）
+            self.show_document_manage()
+        else:
+            # 基层单位：公文沟通（提交给上级、接收上级公文）
+            self.show_document_comm()
+
+    def show_document_manage(self):
+        """中层单位公文管理"""
+        title_frame = tk.Frame(self.right_frame, bg=self.COLORS['bg_white'])
+        title_frame.pack(fill=tk.X, padx=20, pady=10)
+        tk.Label(title_frame, text="公文管理", font=("Microsoft YaHei", 18, "bold"),
+                bg=self.COLORS['bg_white'], fg=self.COLORS['primary']).pack(side=tk.LEFT)
+
+        # 选项卡
+        notebook = ttk.Notebook(self.right_frame)
+        notebook.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+
+        # 发文-tab
+        send_frame = tk.Frame(notebook)
+        notebook.add(send_frame, text="发文")
+
+        columns = ("ID", "标题", "接收单位", "状态", "时间")
+        self.doc_send_tree = ttk.Treeview(send_frame, columns=columns, show="headings", height=15)
+
+        for col in columns:
+            self.doc_send_tree.heading(col, text=col)
+            self.doc_send_tree.column(col, width=120)
+
+        self.doc_send_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+        scrollbar = ttk.Scrollbar(send_frame, orient=tk.VERTICAL, command=self.doc_send_tree.yview)
+        self.doc_send_tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y, pady=10)
+
+        tk.Button(send_frame, text="新建公文", command=self.show_document_submit,
+                 bg=self.COLORS['primary'], fg="white").pack(pady=5)
+
+        # 收文-tab
+        recv_frame = tk.Frame(notebook)
+        notebook.add(recv_frame, text="收文")
+
+        columns = ("ID", "标题", "发送单位", "状态", "时间")
+        self.doc_recv_tree = ttk.Treeview(recv_frame, columns=columns, show="headings", height=15)
+
+        for col in columns:
+            self.doc_recv_tree.heading(col, text=col)
+            self.doc_recv_tree.column(col, width=120)
+
+        self.doc_recv_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+        scrollbar = ttk.Scrollbar(recv_frame, orient=tk.VERTICAL, command=self.doc_recv_tree.yview)
+        self.doc_recv_tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y, pady=10)
+
+        self.refresh_doc_manage()
+
+    def refresh_doc_manage(self):
+        """刷新公文管理列表"""
+        # 发文
+        for item in self.doc_send_tree.get_children():
+            self.doc_send_tree.delete(item)
+
+        org_id = self.user.get('organization_id', 0)
+        docs = DocumentService.get_documents_by_org(org_id)
+
+        for doc in docs:
+            self.doc_send_tree.insert("", tk.END, values=(
+                doc['id'], doc['title'], doc.get('receiver_org', '未知'),
+                doc.get('status', ''), doc.get('create_date', '')
+            ))
+
+        # 收文
+        for item in self.doc_recv_tree.get_children():
+            self.doc_recv_tree.delete(item)
+
+        recv_docs = DocumentService.get_received_documents(org_id)
+        for doc in recv_docs:
+            self.doc_recv_tree.insert("", tk.END, values=(
+                doc['id'], doc['title'], doc.get('sender_org', '未知'),
+                doc.get('status', ''), doc.get('create_date', '')
+            ))
+
+    def show_document_comm(self):
+        """基层单位公文沟通"""
+        title_frame = tk.Frame(self.right_frame, bg=self.COLORS['bg_white'])
+        title_frame.pack(fill=tk.X, padx=20, pady=10)
+        tk.Label(title_frame, text="公文沟通", font=("Microsoft YaHei", 18, "bold"),
+                bg=self.COLORS['bg_white'], fg=self.COLORS['primary']).pack(side=tk.LEFT)
+
+        # 选项卡
+        notebook = ttk.Notebook(self.right_frame)
+        notebook.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+
+        # 提交公文
+        submit_frame = tk.Frame(notebook)
+        notebook.add(submit_frame, text="向上级提交")
+        tk.Button(submit_frame, text="新建公文", command=self.show_document_submit,
+                 bg=self.COLORS['primary'], fg="white").pack(pady=10)
+
+        # 接收公文
+        recv_frame = tk.Frame(notebook)
+        notebook.add(recv_frame, text="收文查看")
+
+        columns = ("ID", "标题", "发送单位", "时间")
+        self基层_recv_tree = ttk.Treeview(recv_frame, columns=columns, show="headings", height=18)
+
+        for col in columns:
+            self基层_recv_tree.heading(col, text=col)
+            self基层_recv_tree.column(col, width=150)
+
+        self基层_recv_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+        scrollbar = ttk.Scrollbar(recv_frame, orient=tk.VERTICAL, command=self基层_recv_tree.yview)
+        self基层_recv_tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y, pady=10)
+
+        self.refresh_基层_recv()
+
+    def refresh_基层_recv(self):
+        """刷新基层单位收文"""
+        for item in self基层_recv_tree.get_children():
+            self基层_recv_tree.delete(item)
+
+        org_id = self.user.get('organization_id', 0)
+        recv_docs = DocumentService.get_received_documents(org_id)
+
+        for doc in recv_docs:
+            self基层_recv_tree.insert("", tk.END, values=(
+                doc['id'], doc['title'], doc.get('sender_org', '未知'),
+                doc.get('create_date', '')
+            ))
+
+    def _show_content_page(self, title, content):
+        """统一内容页面"""
+        self.clear_right_frame()
+
+        title_frame = tk.Frame(self.right_frame, bg=self.COLORS['bg_white'])
+        title_frame.pack(fill=tk.X, padx=20, pady=10)
+        tk.Label(title_frame, text=title, font=("Microsoft YaHei", 18, "bold"),
+                bg=self.COLORS['bg_white'], fg=self.COLORS['primary']).pack(side=tk.LEFT)
+
+        content_frame = tk.Frame(self.right_frame, bg=self.COLORS['bg_light'])
+        content_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+        tk.Label(content_frame, text=content,
+                font=("Microsoft YaHei", 12),
+                bg=self.COLORS['bg_light'],
+                fg=self.COLORS['text_secondary']).pack()
 
     def clear_right_frame(self):
         """清空右侧内容区"""
@@ -130,13 +518,16 @@ class NormalUserWindow(MainWindow):
 
         # 判断是否为中层机关
         parent_sub_units = {
-            21: list(range(81, 86)),  # 公路处下属: 81-85
+            21: list(range(81, 91)),  # 公路处下属: 81-90
             22: list(range(61, 73)),  # 高速处下属: 61-72
             23: list(range(51, 61)),  # 道桥处下属: 51-60
             26: list(range(73, 80)),  # 研究院下属: 73-79
-            27: [62],                  # 设计院下属: 62
+            27: [62, 91, 92, 93, 94, 95, 96, 97, 98],  # 设计院下属: 62, 91-98
             31: list(range(86, 89)),  # 建设公司下属: 86-88
-            38: [63]                   # 地铁处下属: 63
+            38: [63],                   # 地铁处下属: 63
+            39: [],                     # 巡查处下属: 暂无
+            41: [],                     # 超治办下属: 暂无
+            42: list(range(101, 111))   # 养护工程处下属: 101-110
         }
 
         from models.organization import Organization
@@ -262,15 +653,19 @@ class NormalUserWindow(MainWindow):
             22: {'parent': None, 'subs': list(range(61, 73)), 'name': '天津市高速公路管理处'}, # 高速处
             23: {'parent': None, 'subs': list(range(51, 61)), 'name': '天津市道路桥梁管理处'},  # 道桥处
             26: {'parent': None, 'subs': list(range(73, 80)), 'name': '天津市市政工程研究院'},  # 研究院
-            27: {'parent': None, 'subs': [62], 'name': '天津市市政工程设计研究院'},           # 设计院
+            27: {'parent': None, 'subs': [62, 91, 92, 93, 94, 95, 96, 97, 98], 'name': '天津市市政工程设计研究院'},  # 设计院
             31: {'parent': None, 'subs': list(range(86, 89)), 'name': '天津市市政工程建设公司'}, # 建设公司
-            38: {'parent': None, 'subs': [63], 'name': '天津市地铁管理处'}                    # 地铁处
+            38: {'parent': None, 'subs': [63], 'name': '天津市地铁管理处'},  # 地铁处
+            39: {'parent': None, 'subs': [], 'name': '天津市市政公路巡查管理处'},  # 巡查处
+            41: {'parent': None, 'subs': [], 'name': '天津市公路治理车辆超限超载管理办公室'},  # 超治办
+            42: {'parent': None, 'subs': list(range(101, 111)), 'name': '天津市公路养护工程处'}  # 养护工程处
         }
 
         # 判断用户类型
         is_sub_unit = (51 <= my_org_id <= 60) or (61 <= my_org_id <= 72) or \
-                      (73 <= my_org_id <= 79) or (81 <= my_org_id <= 85) or \
-                      (86 <= my_org_id <= 88) or (my_org_id in [62, 63])
+                      (73 <= my_org_id <= 79) or (81 <= my_org_id <= 90) or \
+                      (86 <= my_org_id <= 88) or (101 <= my_org_id <= 110) or \
+                      (my_org_id in [62, 63, 91, 92, 93, 94, 95, 96, 97, 98])
         is_middle_level = my_org_id in parent_sub_units
 
         # 获取可选的接收单位
@@ -542,19 +937,22 @@ class NormalUserWindow(MainWindow):
 
         # 判断是否为中层单位
         parent_sub_units = {
-            21: list(range(81, 86)),  # 公路处下属: 81-85
+            21: list(range(81, 91)),  # 公路处下属: 81-90
             22: list(range(61, 73)),  # 高速处下属: 61-72
             23: list(range(51, 61)),  # 道桥处下属: 51-60
             26: list(range(73, 80)),  # 研究院下属: 73-79
-            27: [62],                  # 设计院下属: 62
+            27: [62, 91, 92, 93, 94, 95, 96, 97, 98],  # 设计院下属: 62, 91-98
             31: list(range(86, 89)),  # 建设公司下属: 86-88
-            38: [63]                   # 地铁处下属: 63
+            38: [63],                   # 地铁处下属: 63
+            39: [],                     # 巡查处下属: 暂无
+            41: [],                     # 超治办下属: 暂无
+            42: list(range(101, 111))   # 养护工程处下属: 101-110
         }
 
         # 判断是否为基层单位
         is_sub_unit = (51 <= my_org_id <= 60) or (61 <= my_org_id <= 72) or \
-                      (73 <= my_org_id <= 79) or (81 <= my_org_id <= 85) or \
-                      (86 <= my_org_id <= 88) or (my_org_id in [62, 63])
+                      (73 <= my_org_id <= 79) or (81 <= my_org_id <= 90) or \
+                      (86 <= my_org_id <= 88) or (my_org_id in [62, 63, 91, 92, 93, 94, 95, 96, 97, 98])
 
         if my_org_id in parent_sub_units:
             # 中层单位：查看本单位及下属单位的草稿
@@ -627,15 +1025,16 @@ class NormalUserWindow(MainWindow):
             22: {'parent': None, 'subs': list(range(61, 73)), 'name': '天津市高速公路管理处'},
             23: {'parent': None, 'subs': list(range(51, 61)), 'name': '天津市道路桥梁管理处'},
             26: {'parent': None, 'subs': list(range(73, 80)), 'name': '天津市市政工程研究院'},
-            27: {'parent': None, 'subs': [62], 'name': '天津市市政工程设计研究院'},
+            27: {'parent': None, 'subs': [62, 71, 72, 73, 74, 75, 76, 77, 78], 'name': '天津市市政工程设计研究院'},
             31: {'parent': None, 'subs': list(range(86, 89)), 'name': '天津市市政工程建设公司'},
             38: {'parent': None, 'subs': [63], 'name': '天津市地铁管理处'}
         }
 
         # 判断用户类型
         is_sub_unit = (51 <= my_org_id <= 60) or (61 <= my_org_id <= 72) or \
-                      (73 <= my_org_id <= 79) or (81 <= my_org_id <= 85) or \
-                      (86 <= my_org_id <= 88) or (my_org_id in [62, 63])
+                      (73 <= my_org_id <= 79) or (81 <= my_org_id <= 90) or \
+                      (86 <= my_org_id <= 88) or (101 <= my_org_id <= 110) or \
+                      (my_org_id in [62, 63, 91, 92, 93, 94, 95, 96, 97, 98])
         is_middle_level = my_org_id in parent_sub_units
 
         # 获取组织映射
@@ -928,13 +1327,15 @@ class NormalUserWindow(MainWindow):
             22: list(range(61, 73)),  # 高速处下属: 61-72
             23: list(range(51, 61)),  # 道桥处下属: 51-60
             26: list(range(73, 80)),  # 研究院下属: 73-79
-            27: [62],                  # 设计院下属: 62
-            38: [63]                   # 地铁处下属: 63
+            27: [62, 91, 92, 93, 94, 95, 96, 97, 98],  # 设计院下属: 62, 91-98
+            38: [63],  # 地铁处下属: 63
+            39: [],    # 巡查处下属: 暂无
+            40: []     # 执法总队下属: 暂无
         }
         is_parent = my_org_id in parent_sub_units
 
         # 判断是否为下属单位
-        is_sub_unit = (51 <= my_org_id <= 60) or (61 <= my_org_id <= 72) or (73 <= my_org_id <= 79) or (81 <= my_org_id <= 85) or (86 <= my_org_id <= 88) or (my_org_id in [62, 63])
+        is_sub_unit = (51 <= my_org_id <= 60) or (61 <= my_org_id <= 72) or (73 <= my_org_id <= 79) or (81 <= my_org_id <= 90) or (86 <= my_org_id <= 88) or (101 <= my_org_id <= 110) or (my_org_id in [62, 63, 91, 92, 93, 94, 95, 96, 97, 98])
 
         # 标题
         title_frame = tk.Frame(self.right_frame, bg=self.COLORS['bg_white'])
@@ -1009,8 +1410,10 @@ class NormalUserWindow(MainWindow):
             22: list(range(61, 73)),  # 高速处下属: 61-72
             23: list(range(51, 61)),  # 道桥处下属: 51-60
             26: list(range(73, 80)),  # 研究院下属: 73-79
-            27: [62],                  # 设计院下属: 62
-            38: [63]                   # 地铁处下属: 63
+            27: [62, 91, 92, 93, 94, 95, 96, 97, 98],  # 设计院下属: 62, 91-98
+            38: [63],  # 地铁处下属: 63
+            39: [],    # 巡查处下属: 暂无
+            40: []     # 执法总队下属: 暂无
         }
 
         from models.organization import Organization
@@ -1206,3 +1609,103 @@ class NormalUserWindow(MainWindow):
                     ))
             except Exception as e:
                 print(f"加载密码修改记录失败: {e}")
+
+    # ============== 中层单位业务功能方法 ==============
+
+    def show_facility_management(self):
+        """设施管理"""
+        self._show_content_page("设施管理", "设施管理功能\n\n查看和管理本单位负责的市政设施...")
+
+    def show_facility_maintenance(self):
+        """养护工程"""
+        self._show_content_page("养护工程", "养护工程管理\n\n管理养护工程项目和进度...")
+
+    def show_emergency(self):
+        """应急处置"""
+        self._show_content_page("应急处置", "应急抢险管理\n\n应急预案和应急响应管理...")
+
+    def show_research(self):
+        """科研项目管理"""
+        self._show_content_page("科研项目管理", "科研项目管理\n\n管理科研项目立项和进度...")
+
+    def show_tech_service(self):
+        """技术服务"""
+        self._show_content_page("技术服务", "技术服务和检测\n\n提供技术咨询和工程质量检测服务...")
+
+    def show_design(self):
+        """工程设计"""
+        self._show_content_page("工程设计", "工程设计管理\n\n市政工程设计管理...")
+
+    def show_design_review(self):
+        """方案审查"""
+        self._show_content_page("方案审查", "设计方案审查\n\n审查设计方案...")
+
+    def show_construction(self):
+        """工程建设"""
+        self._show_content_page("工程建设", "工程建设管理\n\n管理工程建设和施工...")
+
+    def show_safety(self):
+        """安全管理"""
+        self._show_content_page("安全管理", "安全管理\n\n施工安全和生产安全管理...")
+
+    def show_quality(self):
+        """质量监督"""
+        self._show_content_page("质量监督", "工程质量监督\n\n监督工程质量...")
+
+    def show_operation(self):
+        """运营管理"""
+        self._show_content_page("运营管理", "地铁运营管理\n\n地铁运营和调度管理...")
+
+    # ============== 巡查处和执法总队业务功能方法 ==============
+
+    def show_inspection(self):
+        """公路巡查"""
+        self._show_content_page("公路巡查管理", "公路路政巡查管理\n\n负责公路巡查任务分配和执行...")
+
+    def show_damage_report(self):
+        """病害上报"""
+        self._show_content_page("道路病害上报", "道路病害信息采集上报\n\n采集和上报道路病害信息...")
+
+    def show_inspection_stats(self):
+        """巡查统计"""
+        self._show_content_page("巡查统计报表", "巡查工作统计报表\n\n巡查工作量和问题统计...")
+
+    def show_enforcement(self):
+        """路政执法"""
+        self._show_content_page("路政执法", "路政违法行为查处\n\n查处路政违法案件...")
+
+    def show_case_management(self):
+        """案件管理"""
+        self._show_content_page("路政案件管理", "路政案件处理\n\n路政案件登记和处理...")
+
+    def show_enforcement_supervision(self):
+        """执法监督"""
+        self._show_content_page("行政执法监督", "行政执法监督\n\n监督路政执法工作规范...")
+
+    # ============== 超治办业务功能方法 ==============
+
+    def show_overload_control(self):
+        """超限治理"""
+        self._show_content_page("超限超载治理", "治理车辆超限超载\n\n超限车辆检查和处理...")
+
+    def show_source_supervision(self):
+        """源头监管"""
+        self._show_content_page("货运源头监管", "货运源头监管\n\n对货运企业源头进行监管...")
+
+    def show_overload_case(self):
+        """案件处理"""
+        self._show_content_page("超限违法案件处理", "超限违法案件处理\n\n超限违法案件登记和处理...")
+
+    # ============== 公路养护工程处业务功能方法 ==============
+
+    def show_maintenance_project(self):
+        """养护工程"""
+        self._show_content_page("公路养护工程", "公路养护工程管理\n\n养护工程计划制定和实施...")
+
+    def show_facility_maintenance(self):
+        """设施维护"""
+        self._show_content_page("公路设施维护", "公路设施维护\n\n公路设施日常维护管理...")
+
+    def show_emergency_maintenance(self):
+        """应急养护"""
+        self._show_content_page("公路应急养护", "公路应急养护抢修\n\n公路应急养护和抢修管理...")

@@ -10,11 +10,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from views.login_window import LoginWindow
 from views.asset_manager_window import AssetManagerWindow
-from views.office_window import OfficeWindow
-from views.tech_window import TechWindow
-from views.finance_window import FinanceWindow
+from views.unified_department_window import UnifiedDepartmentWindow
 from views.leader_window import LeaderWindow
-from views.department_window import DepartmentWindow
 from views.normal_user_window import NormalUserWindow
 from services.auth_service import AuthService
 from config import (
@@ -27,25 +24,9 @@ def get_window_by_role(user):
     """根据用户角色返回对应窗口"""
     role = user['role']
 
-    # 系统管理员
-    if role == ROLE_ADMIN:
-        return AssetManagerWindow(user)
-
-    # 资产管理处
-    elif role == ROLE_ASSET_MANAGER:
-        return AssetManagerWindow(user)
-
-    # 办公室
-    elif role == ROLE_OFFICE_STAFF:
-        return OfficeWindow(user)
-
-    # 科技处
-    elif role == ROLE_TECH_STAFF:
-        return TechWindow(user)
-
-    # 财务处
-    elif role == ROLE_FINANCE_STAFF:
-        return FinanceWindow(user)
+    # 系统管理员、资产管理处 - 统一使用UnifiedDepartmentWindow
+    if role in [ROLE_ADMIN, ROLE_ASSET_MANAGER]:
+        return UnifiedDepartmentWindow(user)
 
     # 局领导
     elif role == ROLE_LEADER:
@@ -59,13 +40,13 @@ def get_window_by_role(user):
     elif role == ROLE_SUB_UNIT_USER:
         return NormalUserWindow(user)
 
-    # 普通处室用户 (normal_user) - 使用专业处室窗口
-    elif role == 'normal_user':
-        return DepartmentWindow(user)
+    # 所有处室用户（包括办公室、科技处、财务处、普通处室用户）统一使用UnifiedDepartmentWindow
+    elif role in [ROLE_OFFICE_STAFF, ROLE_TECH_STAFF, ROLE_FINANCE_STAFF, 'normal_user']:
+        return UnifiedDepartmentWindow(user)
 
     # 其他情况默认
     else:
-        return DepartmentWindow(user)
+        return UnifiedDepartmentWindow(user)
 
 
 def main():

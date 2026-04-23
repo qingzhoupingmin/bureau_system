@@ -55,6 +55,7 @@ class AuthService:
             'tech_staff': 6,
             'finance_staff': 6,
             'unit_user': 5,
+            'sub_unit_user': 4,  # 下属单位的下属单位
             'normal_user': 1
         }
         user_level = role_hierarchy.get(user['role'], 0)

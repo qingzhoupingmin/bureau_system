@@ -43,7 +43,7 @@ class MainWindow:
         self.root.geometry("1400x800")
         self.root.configure(bg=self.COLORS['bg_white'])
 
-        # 加载徽章图片
+        # 加载徽章图片并保持引用
         self.logo_img = self.load_logo()
 
         self.current_user = user
@@ -57,13 +57,19 @@ class MainWindow:
             if os.path.exists(logo_path):
                 img = Image.open(logo_path)
                 img = img.resize((50, 50), Image.Resampling.LANCZOS)
-                return ImageTk.PhotoImage(img)
+                photo = ImageTk.PhotoImage(img)
+                # 保持图片引用，防止被垃圾回收
+                photo.image = img
+                return photo
             # 如果没有logo.png，尝试加载badge.png作为备选
             badge_path = os.path.join(os.path.dirname(__file__), '..', 'assets', 'images', 'badge.png')
             if os.path.exists(badge_path):
                 img = Image.open(badge_path)
                 img = img.resize((50, 50), Image.Resampling.LANCZOS)
-                return ImageTk.PhotoImage(img)
+                photo = ImageTk.PhotoImage(img)
+                # 保持图片引用，防止被垃圾回收
+                photo.image = img
+                return photo
         except Exception as e:
             print(f"加载Logo失败: {e}")
         return None
