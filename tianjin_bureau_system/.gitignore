@@ -31,6 +31,7 @@ ENV/
 *.swp
 *.swo
 *~
+*.bak
 
 # Database
 *.db
@@ -42,3 +43,8 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+# Node.js / Frontend
+municipal-system/node_modules/
+municipal-system/dist/
+municipal-system/.vite/

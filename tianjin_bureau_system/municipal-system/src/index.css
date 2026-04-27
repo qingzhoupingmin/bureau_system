@@ -1,0 +1,5 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* 可选：引入 animate.css（如果使用） */
+/* @import 'animate.css'; */

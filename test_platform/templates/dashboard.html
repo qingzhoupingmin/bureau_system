@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 天津市市政工程局 - 自动化测试平台</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-vial"></i>
+                天津市市政工程局 - 自动化测试平台
+            </a>
+            <span class="badge bg-light text-primary ms-2" id="statusBadge">就绪</span>
+            <div class="ms-auto">
+                <button class="btn btn-sm btn-outline-light me-2" id="btnExpandAll">
+                    <i class="fas fa-expand-arrows-alt"></i> 展开全部
+                </button>
+                <button class="btn btn-sm btn-outline-light" id="btnCollapseAll">
+                    <i class="fas fa-compress-arrows-alt"></i> 折叠全部
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 切换标签页导航（小屏用） -->
+            <div class="d-md-none mt-2">
+                <div class="btn-group w-100" role="group">
+                    <button class="btn btn-outline-primary active" data-tab="tests">
+                        <i class="fas fa-list"></i> 测试用例
+                    </button>
+                    <button class="btn btn-outline-primary" data-tab="logs">
+                        <i class="fas fa-terminal"></i> 运行日志
+                    </button>
+                    <button class="btn btn-outline-primary" data-tab="history">
+                        <i class="fas fa-history"></i> 历史记录
+                    </button>
+                </div>
+            </div>
+
+            <!-- 左侧：模块导航 + 测试树 -->
+            <div class="col-md-3 sidebar d-none d-md-block" id="sidebar">
+                <div class="sidebar-header">
+                    <h6 class="mb-0"><i class="fas fa-sitemap"></i> 测试模块</h6>
+                    <small class="text-muted" id="testCount">加载中...</small>
+                </div>
+                <div class="module-list" id="moduleList">
+                    <!-- 由 JS 动态渲染 -->
+                    <div class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                        <span class="ms-2">加载测试用例...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧主区域 -->
+            <div class="col-md-9 main-content">
+                <!-- 操作栏 -->
+                <div class="toolbar">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <button class="btn btn-success" id="btnRun">
+                            <i class="fas fa-play"></i> 运行选中
+                        </button>
+                        <button class="btn btn-danger" id="btnStop" disabled>
+                            <i class="fas fa-stop"></i> 停止
+                        </button>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                                <i class="fas fa-cog"></i> 选项
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><h6 class="dropdown-header">并行执行</h6></li>
+                                <li>
+                                    <label class="dropdown-item">
+                                        <input type="checkbox" id="optParallel" class="me-2">
+                                        启用并行 (-n auto)
+                                    </label>
+                                </li>
+                                <li><h6 class="dropdown-header">失败重试</h6></li>
+                                <li>
+                                    <label class="dropdown-item">
+                                        <input type="checkbox" id="optRetry" class="me-2">
+                                        失败重试1次 (--reruns 1)
+                                    </label>
+                                </li>
+                                <li><h6 class="dropdown-header">详细程度</h6></li>
+                                <li>
+                                    <label class="dropdown-item">
+                                        <input type="checkbox" id="optVerbose" class="me-2" checked>
+                                        详细输出 (-v)
+                                    </label>
+                                </li>
+                            </ul>
+                        </div>
+                        <button class="btn btn-outline-info" id="btnRefresh">
+                            <i class="fas fa-sync-alt"></i> 刷新
+                        </button>
+                        <span class="badge bg-secondary ms-auto" id="statusText">就绪</span>
+                    </div>
+                </div>
+
+                <!-- 测试统计卡片 -->
+                <div class="row g-2 mb-3" id="statCards">
+                    <div class="col-6 col-md-3">
+                        <div class="card stat-card bg-light">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted small">总计</span>
+                                    <span class="fw-bold" id="statTotal">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card stat-card bg-success text-white">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between">
+                                    <span class="small">通过</span>
+                                    <span class="fw-bold" id="statPassed">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card stat-card bg-danger text-white">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between">
+                                    <span class="small">失败</span>
+                                    <span class="fw-bold" id="statFailed">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card stat-card bg-warning text-white">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between">
+                                    <span class="small">跳过</span>
+                                    <span class="fw-bold" id="statSkipped">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 标签页内容 -->
+                <div class="tab-content">
+                    <!-- 测试用例树（桌面内联 / 小屏独立tab） -->
+                    <div class="tab-pane active" id="tabTests">
+                        <div class="d-md-none mb-2">
+                            <h6><i class="fas fa-sitemap"></i> 测试模块</h6>
+                            <div id="moduleListMobile"></div>
+                        </div>
+                    </div>
+
+                    <!-- 日志输出 -->
+                    <div class="tab-pane" id="tabLogs">
+                        <div class="log-header">
+                            <span><i class="fas fa-terminal"></i> 实时运行日志</span>
+                            <div>
+                                <button class="btn btn-sm btn-outline-secondary" id="btnClearLog">
+                                    <i class="fas fa-eraser"></i> 清空
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" id="btnCopyLog">
+                                    <i class="fas fa-copy"></i> 复制
+                                </button>
+                            </div>
+                        </div>
+                        <div class="log-output" id="logOutput">
+                            <div class="log-line text-muted">
+                                <span class="log-time">--:--:--</span>
+                                <span>等待操作...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 历史记录 -->
+                    <div class="tab-pane" id="tabHistory">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0"><i class="fas fa-history"></i> 测试历史</h6>
+                            <button class="btn btn-sm btn-outline-secondary" id="btnRefreshHistory">
+                                <i class="fas fa-sync-alt"></i> 刷新
+                            </button>
+                        </div>
+                        <div id="historyList">
+                            <div class="text-center py-4 text-muted">
+                                <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+                                暂无历史记录
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 进度条 -->
+    <div class="progress-bar-container" id="progressBar">
+        <div class="progress" style="height: 3px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                 style="width: 0%" id="progressFill"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

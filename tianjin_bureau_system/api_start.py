@@ -18,11 +18,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
 def start_api_server(
-    host: str = "127.0.0.1",
+    host: str = "0.0.0.0",
     port: int = 8000,
     reload: bool = True,
     workers: int = 1,
-    log_level: str = "info"
+    log_level: str = "info",
+    web_ui: bool = True
 ):
     """
     启动API服务
@@ -33,16 +34,24 @@ def start_api_server(
         reload: 是否自动重载
         workers: 工作进程数
         log_level: 日志级别
+        web_ui: 是否启用Web端界面
     """
     print("=" * 60)
-    print("   天津市市政工程局管理系统 - API服务")
+    print("   天津市市政工程局管理系统")
     print("=" * 60)
-    print(f"   地址: http://{host}:{port}")
-    print(f"   文档: http://{host}:{port}/docs")
-    print(f"   ReDoc: http://{host}:{port}/redoc")
-    print(f"   状态: http://{host}:{port}/health")
+    print(f"   Web端(推荐): http://localhost:{port}/")
+    print(f"   API文档:      http://localhost:{port}/docs")
+    print(f"   健康检查:      http://localhost:{port}/health")
+    if web_ui:
+        print("-" * 60)
+        print("   Web 前端管理系统已启用（浏览器访问即可）")
     print("=" * 60)
     print()
+
+    if web_ui:
+        print("  [提示] 如需开发前端，请另开终端运行:")
+        print(f"    cd municipal-system && npm run dev")
+        print()
 
     # 启动API服务
     uvicorn.run(

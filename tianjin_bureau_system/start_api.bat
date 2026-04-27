@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 echo ========================================
-echo   天津市市政工程局管理系统 API服务
+echo   天津市市政工程局管理系统
 echo ========================================
 echo.
 
@@ -34,19 +34,19 @@ if %errorlevel% neq 0 (
 )
 echo.
 
-echo [3/3] 启动API服务...
+echo [3/3] 启动服务...
 echo.
 echo ========================================
-echo   API服务信息
+echo   访问地址
 echo ========================================
-echo   地址: http://localhost:8000
-echo   文档: http://localhost:8000/docs
-echo   状态: http://localhost:8000/health
+echo   Web端(推荐): http://localhost:8000
+echo   API文档:     http://localhost:8000/docs
+echo   健康检查:    http://localhost:8000/health
 echo ========================================
 echo.
 echo 按 Ctrl+C 停止服务
 echo.
 
-uvicorn api.main:app --reload --port 8000
+python api_start.py --port 8000
 
 pause
